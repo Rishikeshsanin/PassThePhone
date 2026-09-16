@@ -2,107 +2,164 @@
 
 **Pick someone. Pass the turn. Find out what your friends really think.**
 
-PassThePhone is a real-time multiplayer party game for 3–15 friends. One person receives a question, publicly chooses the friend who fits best, and that selected friend immediately gets the next turn. The chain keeps moving until the host ends the session.
+PassThePhone is a real-time multiplayer party game for **3–15 friends**. One person receives a question, publicly chooses the friend who fits best, and that selected friend normally receives the next turn. The chain keeps moving until the selected session length is complete or the host ends an Unlimited game.
 
 ## Why it is different
 
-Most social party apps either collect anonymous votes or make everyone answer at once. PassThePhone makes every choice attributable and turns the selection itself into the turn-passing mechanic:
+Most social party games either collect anonymous votes or make everyone answer at once. PassThePhone makes every choice attributable and turns the selection itself into the turn-passing mechanic:
 
 `Rishi → Rahul → Aryan → Karthik → ...`
 
-Every device sees the reveal at the same time, which creates the actual entertainment: arguments, reactions, inside jokes and unexpected wholesome moments.
+Every device sees the reveal, which creates the actual entertainment: arguments, reactions, inside jokes and unexpectedly wholesome moments.
 
 ## Core features
 
-- 3–15 player realtime rooms
+- 3–15 player real-time rooms
 - Short room codes + QR joining
-- 20 / 30 / 40 / Unlimited session modes
+- **20 / 30 / 40 / Unlimited** session modes
 - No question repeats inside one session
+- 315 curated V1 prompts
 - Category mixing: Classic, Funny, Wholesome, Personal, Dark, 18+, Fantasy and Popular
 - **Heat 1–5**: the host can turn question intensity up or down while the game is running
+- Category changes during an active game
 - Public animated choice reveals
-- Live chat
-- Host controls for heat, categories, skip and end-game
-- Final data-driven awards and receipts
-- Anonymous auth: no signup screen
-- Mobile-first responsive UI
+- Anti-ping-pong turn balancing for large groups
+- Live chat + floating emoji reactions
+- Host controls for Heat, categories, skip and end-game
+- Final data-driven awards, strongest-chain stats and receipts
+- No account/signup flow
+- Room/session recovery after refresh
+- Mobile-first responsive UI with reduced-motion support
 
 ## Stack
 
-- Next.js + TypeScript
+- Next.js 15 + React 19 + TypeScript
 - Tailwind CSS
-- Supabase Postgres + Realtime + Anonymous Auth
+- Supabase Postgres + Realtime + Edge Functions
 - Vercel
-- LiveKit-ready environment hooks for the voice/video phase
+- LiveKit-ready roadmap for optional voice/video rooms
 
 ## Architecture
 
 ```text
 Browser clients
    │
-   ├── Anonymous Supabase session
-   ├── Realtime room/player subscriptions
-   ├── Realtime choice reveals
-   └── Realtime chat
+   ├── room-scoped opaque session token
+   ├── secure PassThePhone Edge API
+   ├── Realtime broadcast for low-latency refresh/reactions
+   └── polling fallback for resilience
    │
-Supabase
-   ├── rooms
-   ├── players
-   ├── choices
-   └── chat_messages
+Supabase Project Hub
+   │
+   └── pass_the_phone schema (App #12)
+        ├── rooms
+        ├── players
+        ├── choices
+        └── chat_messages
 ```
 
-The actual question catalogue ships with the application and is selected using a category-aware, Heat-aware scoring engine. Game state stays in a dedicated Supabase project so PassThePhone cannot touch data belonging to any other app.
+PassThePhone intentionally uses the existing shared **Project Hub** instead of consuming a dedicated Supabase project. Its application data is isolated to `pass_the_phone.*` and registered `pass_the_phone`-prefixed resources.
+
+The browser never receives direct table privileges. The Edge API validates an opaque per-player room token and performs scoped server-side operations against the private `pass_the_phone` schema. No other application schema is part of the game runtime.
+
+The question catalogue ships with the application and is selected by a category-aware, Heat-aware scoring engine. Used question IDs are stored with the room so prompts cannot repeat during the same session, including skipped prompts.
+
+## Game modes
+
+| Mode | Behavior |
+| --- | --- |
+| 20 | Quick session; results after question 20 |
+| 30 | Recommended/default session |
+| 40 | Longer group session |
+| Unlimited | Keeps serving unused prompts until the host ends the game or the available pool is exhausted |
+
+## Heat
+
+Heat is category-aware rather than a generic “make it offensive” switch.
+
+- **Funny:** playful → embarrassing → chaotic
+- **Personal:** casual → revealing → more personal
+- **Dark:** mild dark humor → bolder hypothetical humor
+- **Wholesome:** light positivity → deeper friendship questions
+- **18+:** mature dating/relationship questions; still non-explicit
+- **Fantasy:** light hypotheticals → higher-stakes fictional scenarios
+
+## Project Hub safety
+
+Read these before changing Supabase resources:
+
+- `AGENTS.md`
+- `SUPABASE_HUB_RULES.md`
+
+The required preflight is:
+
+```sql
+select hub.assert_app_scope('pass_the_phone', 'pass_the_phone');
+```
+
+Do not create ordinary PassThePhone tables in `public`, do not modify another app schema, and do not change project-wide configuration as a shortcut.
 
 ## Local setup
-
-1. Create a **dedicated** Supabase project for PassThePhone.
-2. Enable Anonymous Sign-Ins in Supabase Auth.
-3. Run `supabase/migrations/001_initial.sql` in that project only.
-4. Copy `.env.example` to `.env.local` and fill:
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-```
-
-5. Install and run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Product rules
+Browser-safe Supabase values are provided through `src/lib/supabase-public.ts`; environment variables can override them:
 
-- Max 15 players per room.
-- A question never repeats in the same session.
-- Fixed sessions recommend 30 questions, but the host can keep playing after the nominal limit.
-- Unlimited mode ends only when the host ends it.
-- Heat changes intensity within the current category instead of blindly making every question offensive.
-- Wholesome Heat means deeper/more personal; Dark/Comedy Heat means bolder.
+```env
+NEXT_PUBLIC_SUPABASE_URL=...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
+```
 
-## Safety / privacy
+Privileged database credentials are never exposed to the browser. Deployed Edge Functions use Supabase-provided server runtime secrets.
 
-Rooms are temporary social sessions. No permanent profiles are required. Supabase RLS isolates room access, anonymous auth gives each browser a stable temporary identity, and the database is intentionally separate from every other project.
+## Verification
+
+The CI pipeline runs:
+
+```bash
+npm run typecheck
+npm run build
+node scripts/api-smoke.mjs
+```
+
+The live smoke test creates an isolated temporary PassThePhone room and verifies the critical path:
+
+`create → join 3 players → configure → start → choose → next question → chat → end → awards → replay`
+
+Test rooms expire automatically.
+
+## Safety & privacy
+
+- No permanent user profiles are required.
+- Room credentials are random and room-scoped; only their SHA-256 hashes are stored.
+- Rooms are temporary and expire after inactivity.
+- Direct browser access to PassThePhone tables is denied.
+- RLS remains enabled as defense in depth.
+- Database writes are restricted to the registered `pass_the_phone` schema.
 
 ## Roadmap
 
 - [x] Product architecture
 - [x] Premium responsive UI
-- [x] Room create/join flow
+- [x] Shared Project Hub isolation
+- [x] Secure room create/join flow
 - [x] Lobby + QR
-- [x] Realtime room model
 - [x] Pass-the-turn game loop
-- [x] Heat/category/session controls
-- [x] Live chat
-- [x] Session awards engine
-- [ ] Expand curated question catalogue to 500+
-- [ ] Voice/video rooms via dedicated LiveKit project
-- [ ] Floating live reactions
+- [x] 20 / 30 / 40 / Unlimited sessions
+- [x] Heat + multi-category controls
+- [x] 315-question curated catalogue
+- [x] Live chat + reactions
+- [x] Awards + receipts
+- [x] Replay flow
+- [x] Build/typecheck CI
+- [x] Live backend smoke-test harness
+- [ ] Optional voice/video rooms
 - [ ] PWA install flow
-- [ ] Shareable final receipt card
-- [ ] Multi-device QA + reconnect hardening
+- [ ] Exportable visual receipt card
+- [ ] Expand the curated catalogue further based on real play feedback
 
 ---
 

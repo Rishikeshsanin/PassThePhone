@@ -3,15 +3,13 @@
 import { useState } from "react";
 import { ArrowRight, Gamepad2, MessageCircle, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { isSupabaseConfigured } from "@/lib/supabase";
 
 export default function HomePage() {
   const [joinCode, setJoinCode] = useState("");
-  const configured = isSupabaseConfigured();
 
   const enter = (mode: "create" | "join") => {
     if (mode === "create") window.location.href = "/new";
-    else if (joinCode.trim()) window.location.href = `/join/${joinCode.trim().toUpperCase()}`;
+    else if (joinCode.length === 5) window.location.href = `/join/${joinCode}`;
   };
 
   return (
@@ -37,12 +35,6 @@ export default function HomePage() {
               <button className="btn btn-primary" onClick={() => enter("create")}>Create a room <ArrowRight size={18} /></button>
               <a className="btn btn-secondary" href="#join">Join a room</a>
             </div>
-
-            {!configured && (
-              <div className="mt-5 max-w-xl rounded-2xl border border-amber-300/15 bg-amber-300/[.05] px-4 py-3 text-sm text-amber-100/70">
-                Frontend is ready for setup. Realtime rooms activate as soon as the dedicated Supabase project is connected.
-              </div>
-            )}
           </div>
 
           <div className="glass fade-up rounded-[30px] p-5 sm:p-7">
@@ -75,8 +67,16 @@ export default function HomePage() {
             <p className="mt-2 text-sm text-white/45">No account. Just the room code and your name.</p>
           </div>
           <div className="flex w-full max-w-md gap-2">
-            <input aria-label="Room code" className="input uppercase tracking-[.18em]" maxLength={6} placeholder="ROOM CODE" value={joinCode} onChange={(e) => setJoinCode(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))} />
-            <button className="btn btn-primary !px-4" onClick={() => enter("join")} disabled={!joinCode.trim()}><ArrowRight /></button>
+            <input
+              aria-label="Room code"
+              className="input uppercase tracking-[.18em]"
+              maxLength={5}
+              placeholder="ROOM CODE"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, "").slice(0, 5))}
+              onKeyDown={(e) => { if (e.key === "Enter" && joinCode.length === 5) enter("join"); }}
+            />
+            <button className="btn btn-primary !px-4" onClick={() => enter("join")} disabled={joinCode.length !== 5}><ArrowRight /></button>
           </div>
         </section>
 
@@ -85,7 +85,7 @@ export default function HomePage() {
             [Gamepad2, "One-tap gameplay", "No rulebook. Get a question, pick a friend, pass the turn."],
             [Sparkles, "Live Heat", "Turn the questions up or down without restarting the session."],
             [MessageCircle, "Chat + reactions", "Keep the room alive with messages and instant emoji reactions."],
-            [ShieldCheck, "Isolated rooms", "Every session is temporary and separated from your other projects."],
+            [ShieldCheck, "Private room state", "Temporary sessions with app-isolated backend data."],
           ].map(([Icon, title, text]) => {
             const C = Icon as typeof Users;
             return <div key={String(title)} className="rounded-3xl border border-white/10 bg-white/[.025] p-5"><C size={20} className="text-violet-300" /><div className="mt-4 font-black">{String(title)}</div><p className="mt-2 text-sm leading-6 text-white/45">{String(text)}</p></div>;
