@@ -14,7 +14,7 @@ export type RoomStatus = "lobby" | "active" | "ended";
 export type Question = {
   id: string;
   text: string;
-  category: GameCategory;
+  category: Exclude<GameCategory, "popular">;
   intensity: 1 | 2 | 3 | 4 | 5;
   popularity: number;
   relatability: number;
@@ -23,60 +23,81 @@ export type Question = {
   tags: string[];
 };
 
-export type Room = {
-  id: string;
-  code: string;
-  host_user_id: string;
-  status: RoomStatus;
-  categories: GameCategory[];
-  heat: 1 | 2 | 3 | 4 | 5;
-  session_length: SessionLength;
-  question_limit: number | null;
-  allow_self: boolean;
-  chat_enabled: boolean;
-  round_number: number;
-  current_turn_player_id: string | null;
-  current_question: Question | null;
-  question_history: string[];
-  created_at: string;
-  updated_at: string;
-};
-
 export type Player = {
   id: string;
-  room_id: string;
-  user_id: string;
   name: string;
   color: string;
-  join_order: number;
+  initial: string;
+  isHost: boolean;
+  joinOrder: number;
   connected: boolean;
-  created_at: string;
 };
 
 export type Choice = {
   id: string;
-  room_id: string;
-  round_number: number;
-  question_id: string;
-  question_text: string;
-  category: GameCategory;
+  roundNumber: number;
+  questionId: string;
+  questionText: string;
+  category: string;
   intensity: number;
-  chooser_player_id: string;
-  chosen_player_id: string;
-  created_at: string;
+  awardCategory: string | null;
+  chooserPlayerId: string;
+  chosenPlayerId: string;
+  nextTurnPlayerId: string;
+  turnShuffled: boolean;
+  createdAt: string;
 };
 
 export type ChatMessage = {
   id: string;
-  room_id: string;
-  player_id: string;
+  playerId: string;
   body: string;
-  created_at: string;
+  createdAt: string;
 };
 
-export type SessionAwards = {
-  mostChosen?: { playerId: string; count: number };
-  heatSurvivor?: { playerId: string; count: number };
-  strongestChain?: { from: string; to: string; count: number };
-  categoryWinners: Array<{ category: string; playerId: string; count: number }>;
+export type AwardWinner = {
+  category: string;
+  title: string;
+  playerId: string;
+  playerName: string;
+  count: number;
+};
+
+export type FinalResults = {
+  questionCount: number;
+  mostChosen: { playerId: string; playerName?: string; count: number } | null;
+  heatSurvivor: { playerId: string; playerName?: string; count: number } | null;
+  strongestChain: {
+    from: string;
+    fromName?: string;
+    to: string;
+    toName?: string;
+    count: number;
+  } | null;
+  awardWinners: AwardWinner[];
+  receipts: string[];
+};
+
+export type RoomState = {
+  room: {
+    code: string;
+    status: RoomStatus;
+    categories: GameCategory[];
+    heat: 1 | 2 | 3 | 4 | 5;
+    sessionLength: SessionLength;
+    questionLimit: number | null;
+    allowSelf: boolean;
+    chatEnabled: boolean;
+    roundNumber: number;
+    currentTurnPlayerId: string | null;
+    currentQuestion: Question | null;
+    questionHistoryCount: number;
+    createdAt: string;
+  };
+  me: Player;
+  players: Player[];
+  choices: Choice[];
+  messages: ChatMessage[];
+  final: FinalResults | null;
+  serverTime: string;
 };
