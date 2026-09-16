@@ -1,101 +1,60 @@
-import type { Question } from "@/types/game";
+import type { GameCategory, Question } from "@/types/game";
+import { CLASSIC_QUESTIONS } from "./question-sets/classic";
+import { FUNNY_QUESTIONS } from "./question-sets/funny";
+import { WHOLESOME_QUESTIONS } from "./question-sets/wholesome";
+import { PERSONAL_QUESTIONS } from "./question-sets/personal";
+import { DARK_QUESTIONS } from "./question-sets/dark";
+import { ADULT_QUESTIONS } from "./question-sets/adult";
+import { FANTASY_QUESTIONS } from "./question-sets/fantasy";
 
-const q = (
-  id: string,
-  text: string,
-  category: Question["category"],
-  intensity: Question["intensity"],
-  awardCategory: string,
-  tags: string[],
-  popularity = 9,
-  relatability = 9,
-  allowSelf = true,
-): Question => ({
-  id,
-  text,
-  category,
-  intensity,
-  awardCategory,
-  tags,
-  popularity,
-  relatability,
-  allowSelf,
-});
+const SETS = {
+  classic: CLASSIC_QUESTIONS,
+  funny: FUNNY_QUESTIONS,
+  wholesome: WHOLESOME_QUESTIONS,
+  personal: PERSONAL_QUESTIONS,
+  dark: DARK_QUESTIONS,
+  adult: ADULT_QUESTIONS,
+  fantasy: FANTASY_QUESTIONS,
+} satisfies Record<Exclude<GameCategory, "popular">, readonly string[]>;
 
-export const QUESTIONS: Question[] = [
-  q("classic-001", "Who is the motivator of the group?", "classic", 1, "support", ["friendship", "support"], 9.8, 9.8),
-  q("classic-002", "Who is most likely to become famous?", "classic", 2, "main-character", ["future", "fame"], 9.8, 9.6),
-  q("classic-003", "Who is most likely to become a millionaire?", "classic", 2, "success", ["future", "money"], 9.7, 9.6),
-  q("classic-004", "Who is most likely to get married first?", "classic", 2, "romance", ["future", "relationship"], 9.8, 9.8),
-  q("classic-005", "Who would survive longest in a zombie apocalypse?", "classic", 2, "survival", ["fantasy", "survival"], 9.9, 9.7),
-  q("classic-006", "Who gives the best advice?", "classic", 1, "trust", ["friendship", "advice"], 9.6, 9.7),
-  q("classic-007", "Who is most likely to move abroad first?", "classic", 2, "adventure", ["future", "travel"], 9.3, 9.3),
-  q("classic-008", "Who is the funniest without even trying?", "classic", 1, "humour", ["funny", "personality"], 9.7, 9.7),
-  q("classic-009", "Who would you trust to plan the whole trip?", "classic", 2, "responsibility", ["travel", "trust"], 9.4, 9.5),
-  q("classic-010", "Who is most likely to start their own company?", "classic", 2, "success", ["future", "career"], 9.5, 9.2),
+const AWARDS: Record<Exclude<GameCategory, "popular">, readonly string[]> = {
+  classic: ["support","success","romance","survival","trust","humour","responsibility","leadership","adventure","main-character"],
+  funny: ["chaos","humour","predictable","social"],
+  wholesome: ["trust","loyalty","care","support"],
+  personal: ["romance","mystery","care","overthinker","social"],
+  dark: ["chaos","survival","mystery"],
+  adult: ["romance","social","care"],
+  fantasy: ["leadership","survival","hero","adventure","chaos"],
+};
 
-  q("funny-001", "Who takes forever to get ready?", "funny", 1, "chaos", ["habits", "time"], 9.4, 9.8),
-  q("funny-002", "Who would sleep through an apocalypse?", "funny", 1, "chaos", ["sleep", "apocalypse"], 9.7, 9.4),
-  q("funny-003", "Who laughs at their own jokes the most?", "funny", 1, "humour", ["jokes", "personality"], 9.4, 9.4),
-  q("funny-004", "Who would lose their phone and accuse everyone else?", "funny", 2, "chaos", ["phone", "forgetful"], 9.5, 9.4),
-  q("funny-005", "Who is most likely to send a message to the wrong person?", "funny", 2, "chaos", ["chat", "mistake"], 9.6, 9.5),
-  q("funny-006", "Who would be the worst roommate?", "funny", 2, "chaos", ["roommate", "habits"], 9.7, 9.6),
-  q("funny-007", "Who would accidentally become a meme?", "funny", 2, "main-character", ["internet", "fame"], 9.7, 9.2),
-  q("funny-008", "Who would survive the least time without Wi-Fi?", "funny", 1, "chaos", ["internet", "phone"], 9.5, 9.7),
-  q("funny-009", "Who is most likely to forget why they walked into a room?", "funny", 1, "chaos", ["forgetful", "habits"], 9.2, 9.7),
-  q("funny-010", "Who would order the exact same food every single time?", "funny", 1, "predictable", ["food", "habits"], 9.0, 9.2),
-  q("funny-011", "Who is most likely to laugh at the worst possible moment?", "funny", 2, "chaos", ["laugh", "awkward"], 9.6, 9.7),
-  q("funny-012", "Who would somehow get lost even with Maps open?", "funny", 2, "chaos", ["travel", "maps"], 9.5, 9.5),
+function intensityFor(category: Exclude<GameCategory, "popular">, index: number): 1 | 2 | 3 | 4 | 5 {
+  if (category === "classic") return index < 10 ? 1 : index < 30 ? 2 : 3;
+  if (category === "funny") return index < 10 ? 1 : index < 25 ? 2 : index < 38 ? 3 : 4;
+  if (category === "wholesome") return index < 10 ? 1 : index < 25 ? 2 : index < 40 ? 3 : 4;
+  if (category === "personal") return index < 10 ? 2 : index < 25 ? 3 : index < 38 ? 4 : 5;
+  if (category === "dark") return index < 6 ? 2 : index < 22 ? 3 : index < 38 ? 4 : 5;
+  if (category === "adult") return index < 10 ? 2 : index < 25 ? 3 : index < 38 ? 4 : 5;
+  return index < 8 ? 1 : index < 18 ? 2 : index < 32 ? 3 : index < 42 ? 4 : 5;
+}
 
-  q("wholesome-001", "Who would show up first if you needed help at 3 AM?", "wholesome", 2, "loyalty", ["friendship", "help"], 9.8, 9.9),
-  q("wholesome-002", "Who is the best listener in the group?", "wholesome", 1, "trust", ["friendship", "listening"], 9.5, 9.7),
-  q("wholesome-003", "Who makes the group feel more complete?", "wholesome", 3, "support", ["friendship", "group"], 9.4, 9.4),
-  q("wholesome-004", "Who would you trust with your biggest secret?", "wholesome", 3, "trust", ["trust", "secret"], 9.9, 9.8),
-  q("wholesome-005", "Who is most likely to quietly help without asking for credit?", "wholesome", 2, "loyalty", ["help", "character"], 9.4, 9.3),
-  q("wholesome-006", "Who would make the best parent one day?", "wholesome", 3, "care", ["future", "family"], 9.4, 9.1),
-  q("wholesome-007", "Who gives the best pep talks?", "wholesome", 1, "support", ["support", "motivation"], 9.2, 9.5),
-  q("wholesome-008", "Who would remember everyone's important days?", "wholesome", 2, "care", ["memory", "friendship"], 9.1, 9.3),
+function quality(index: number, offset: number) {
+  return Number((8.7 + (((index * 7) + offset) % 13) / 10).toFixed(1));
+}
 
-  q("personal-001", "Who is most likely to text their ex again?", "personal", 3, "romance", ["relationship", "ex"], 9.6, 9.5),
-  q("personal-002", "Who would fall in love first on a group trip?", "personal", 3, "romance", ["relationship", "travel"], 9.4, 9.2),
-  q("personal-003", "Who is most likely to disappear for a week and come back like nothing happened?", "personal", 3, "chaos", ["social", "disappear"], 9.5, 9.4),
-  q("personal-004", "Who is the hardest person here to read?", "personal", 3, "mystery", ["personality", "mystery"], 9.3, 9.4),
-  q("personal-005", "Who would keep a huge life decision secret the longest?", "personal", 3, "mystery", ["secret", "future"], 9.3, 9.2),
-  q("personal-006", "Who is most likely to change careers completely one day?", "personal", 2, "adventure", ["future", "career"], 9.0, 9.1),
-  q("personal-007", "Who overthinks messages before sending them?", "personal", 2, "overthinker", ["chat", "personality"], 9.5, 9.8),
-  q("personal-008", "Who would forgive someone first after a fight?", "personal", 3, "care", ["friendship", "conflict"], 9.2, 9.4),
+export const QUESTIONS: Question[] = (Object.entries(SETS) as Array<[Exclude<GameCategory, "popular">, readonly string[]]>).flatMap(
+  ([category, texts]) => texts.map((text, index) => ({
+    id: `${category}-${String(index + 1).padStart(3, "0")}`,
+    text,
+    category,
+    intensity: intensityFor(category, index),
+    popularity: quality(index, 1),
+    relatability: quality(index, 5),
+    allowSelf: true,
+    awardCategory: AWARDS[category][index % AWARDS[category].length],
+    tags: [category],
+  })),
+);
 
-  q("dark-001", "Who is most likely to accidentally get arrested?", "dark", 3, "chaos", ["law", "chaos"], 10, 9.8),
-  q("dark-002", "Who could talk their way out of being caught red-handed?", "dark", 3, "chaos", ["bluff", "law"], 9.7, 9.5),
-  q("dark-003", "Who would betray the group first in an apocalypse?", "dark", 4, "chaos", ["apocalypse", "betrayal"], 9.6, 9.4),
-  q("dark-004", "Who would be suspiciously calm during a disaster?", "dark", 3, "mystery", ["disaster", "personality"], 9.3, 9.4),
-  q("dark-005", "Who would make the most convincing supervillain?", "dark", 3, "chaos", ["villain", "fantasy"], 9.8, 9.7),
-  q("dark-006", "Who would survive longest in a horror movie for all the wrong reasons?", "dark", 4, "survival", ["horror", "survival"], 9.4, 9.2),
-  q("dark-007", "Who would fake being asleep to avoid helping everyone?", "dark", 2, "chaos", ["lazy", "betrayal"], 9.2, 9.6),
-  q("dark-008", "Who would press the mysterious red button just to see what happens?", "dark", 4, "chaos", ["risk", "curiosity"], 9.7, 9.8),
-
-  q("adult-001", "Who is most likely to fall for someone completely wrong for them?", "adult", 2, "romance", ["dating", "relationship"], 9.4, 9.5),
-  q("adult-002", "Who would catch feelings first in a casual situation?", "adult", 3, "romance", ["dating", "feelings"], 9.4, 9.2),
-  q("adult-003", "Who has the strongest chance of having a secret admirer?", "adult", 2, "romance", ["dating", "secret"], 9.1, 9.3),
-  q("adult-004", "Who would go back to someone they promised they were done with?", "adult", 4, "romance", ["dating", "ex"], 9.5, 9.4),
-  q("adult-005", "Who would flirt their way out of an awkward situation?", "adult", 3, "social", ["dating", "social"], 9.2, 9.2),
-  q("adult-006", "Who would be the best wingman or wingwoman?", "adult", 2, "social", ["dating", "friendship"], 9.3, 9.3),
-
-  q("fantasy-001", "Who should lead the group during a zombie apocalypse?", "fantasy", 2, "leadership", ["apocalypse", "leadership"], 9.8, 9.8),
-  q("fantasy-002", "Who would misuse invisibility within the first hour?", "fantasy", 3, "chaos", ["superpower", "invisible"], 9.8, 9.5),
-  q("fantasy-003", "Who would make the best superhero?", "fantasy", 2, "hero", ["superhero", "character"], 9.5, 9.4),
-  q("fantasy-004", "Who would accidentally become the villain?", "fantasy", 3, "chaos", ["villain", "character"], 9.7, 9.5),
-  q("fantasy-005", "Who would survive longest if technology disappeared tomorrow?", "fantasy", 3, "survival", ["survival", "technology"], 9.4, 9.5),
-  q("fantasy-006", "Who would definitely open the forbidden door?", "fantasy", 3, "chaos", ["curiosity", "risk"], 9.6, 9.6),
-  q("fantasy-007", "Who would be the best ruler of a fictional kingdom?", "fantasy", 2, "leadership", ["kingdom", "leadership"], 9.2, 9.0),
-  q("fantasy-008", "Who would befriend an alien first?", "fantasy", 2, "adventure", ["alien", "social"], 9.3, 9.2),
-
-  q("popular-001", "Who is most likely to get married first?", "popular", 2, "romance", ["future", "relationship"], 10, 10),
-  q("popular-002", "Who is most likely to become rich?", "popular", 2, "success", ["future", "money"], 10, 9.9),
-  q("popular-003", "Who is most likely to get arrested?", "popular", 3, "chaos", ["law", "chaos"], 10, 10),
-  q("popular-004", "Who would survive longest in a zombie apocalypse?", "popular", 2, "survival", ["apocalypse", "survival"], 10, 10),
-  q("popular-005", "Who gives the best advice?", "popular", 1, "trust", ["friendship", "advice"], 9.9, 9.9),
-  q("popular-006", "Who would you trust with your biggest secret?", "popular", 3, "trust", ["secret", "trust"], 10, 9.9),
-  q("popular-007", "Who is the funniest person in the group?", "popular", 1, "humour", ["funny", "personality"], 10, 10),
-  q("popular-008", "Who is most likely to become famous?", "popular", 2, "main-character", ["future", "fame"], 10, 9.9),
-];
+export const QUESTION_COUNTS = Object.fromEntries(
+  Object.entries(SETS).map(([category, texts]) => [category, texts.length]),
+) as Record<Exclude<GameCategory, "popular">, number>;
