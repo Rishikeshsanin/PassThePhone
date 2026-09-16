@@ -61,7 +61,7 @@ export function heartbeat(code: string, token: string) {
   return gameApi<RoomState>({ op: "heartbeat", code, token });
 }
 
-export function roomAction<T = { state?: RoomState }>(
+export function roomAction<T = RoomState>(
   code: string,
   token: string,
   op: string,
@@ -81,5 +81,5 @@ export function configureRoom(
     chatEnabled: boolean;
   }>,
 ) {
-  return roomAction<{ state: RoomState }>(code, token, "configure", settings);
+  return roomAction<RoomState>(code, token, "configure", settings);
 }
