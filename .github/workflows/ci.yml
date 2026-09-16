@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,3 +25,8 @@ jobs:
         run: npm run typecheck
       - name: Production build
         run: npm run build
+      - name: Multiplayer API smoke test
+        env:
+          SUPABASE_URL: https://nowlwprtcnieihelqjoa.supabase.co
+          SUPABASE_PUBLISHABLE_KEY: sb_publishable_487zTc09VarME-Fgf6EYig__47s_JTp
+        run: node scripts/api-smoke.mjs
