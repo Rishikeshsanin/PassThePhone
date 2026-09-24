@@ -215,10 +215,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [origin, setOrigin] = useState("");
   const [reveal, setReveal] = useState<Choice | null>(null);
   const [reactions, setReactions] = useState<Array<RoomReaction & { offset: number }>>([]);
+  const [heatNotice, setHeatNotice] = useState<{ level: number; direction: "up" | "down" } | null>(null);
   const initializedRef = useRef(false);
   const lastChoiceRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heatNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousHeatRef = useRef<number | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -243,9 +246,19 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       lastChoiceRef.current = latest.id;
       setReveal(latest);
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+      if (heatNoticeTimerRef.current) clearTimeout(heatNoticeTimerRef.current);
       revealTimerRef.current = setTimeout(() => setReveal(null), latest.turnShuffled ? 4200 : 3000);
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([35, 30, 60]);
     }
+    const previousHeat = previousHeatRef.current;
+    if (previousHeat !== null && previousHeat !== next.room.heat && next.room.status === "active") {
+      const direction = next.room.heat > previousHeat ? "up" : "down";
+      setHeatNotice({ level: next.room.heat, direction });
+      if (heatNoticeTimerRef.current) clearTimeout(heatNoticeTimerRef.current);
+      heatNoticeTimerRef.current = setTimeout(() => setHeatNotice(null), 2400);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(direction === "up" ? [30, 25, 55] : 25);
+    }
+    previousHeatRef.current = next.room.heat;
     setState(next);
   }, []);
 
@@ -441,6 +454,17 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         ))}
       </div>
 
+      {heatNotice && (
+        <div className="pointer-events-none fixed left-1/2 top-20 z-[75] -translate-x-1/2 px-3">
+          <div className="rounded-full border border-orange-300/20 bg-[#17100d]/95 px-4 py-2.5 text-center shadow-2xl backdrop-blur-xl">
+            <div className="text-sm font-black text-orange-100">
+              {heatNotice.direction === "up" ? "🔥 Heat turned up" : "❄️ Heat chilled down"} · Level {heatNotice.level}
+            </div>
+            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[.12em] text-white/35">Applies from the next question</div>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-30 border-b border-white/[.07] bg-[#08070d]/80 backdrop-blur-xl">
         <div className="container flex min-h-16 items-center justify-between gap-3 py-3">
           <Logo />
@@ -524,7 +548,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
                   <div className="mt-7 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/15 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div><div className="flex items-center gap-2 text-sm font-black"><Flame size={16} className="text-orange-300" /> Starting Heat</div><div className="mt-1 text-xs text-white/40">Raise it later without restarting.</div></div>
-                    <HeatControl value={room.heat} onChange={(heat) => void configure({ heat })} />
+                    <HeatControl value={room.heat} disabled={settingsBusy} onChange={(heat) => void configure({ heat })} />
                   </div>
 
                   <div className="mt-5 grid gap-2 sm:grid-cols-2">
