@@ -215,10 +215,13 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
   const [origin, setOrigin] = useState("");
   const [reveal, setReveal] = useState<Choice | null>(null);
   const [reactions, setReactions] = useState<Array<RoomReaction & { offset: number }>>([]);
+  const [heatNotice, setHeatNotice] = useState<{ level: number; direction: "up" | "down" } | null>(null);
   const initializedRef = useRef(false);
   const lastChoiceRef = useRef<string | null>(null);
   const fetchingRef = useRef(false);
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const heatNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousHeatRef = useRef<number | null>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -243,9 +246,19 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       lastChoiceRef.current = latest.id;
       setReveal(latest);
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+      if (heatNoticeTimerRef.current) clearTimeout(heatNoticeTimerRef.current);
       revealTimerRef.current = setTimeout(() => setReveal(null), latest.turnShuffled ? 4200 : 3000);
       if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.([35, 30, 60]);
     }
+    const previousHeat = previousHeatRef.current;
+    if (previousHeat !== null && previousHeat !== next.room.heat && next.room.status === "active") {
+      const direction = next.room.heat > previousHeat ? "up" : "down";
+      setHeatNotice({ level: next.room.heat, direction });
+      if (heatNoticeTimerRef.current) clearTimeout(heatNoticeTimerRef.current);
+      heatNoticeTimerRef.current = setTimeout(() => setHeatNotice(null), 2400);
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(direction === "up" ? [30, 25, 55] : 25);
+    }
+    previousHeatRef.current = next.room.heat;
     setState(next);
   }, []);
 
@@ -295,6 +308,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       window.clearInterval(poll);
       window.clearInterval(beat);
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+      if (heatNoticeTimerRef.current) clearTimeout(heatNoticeTimerRef.current);
     };
   }, [applyState, code, refresh, token]);
 
@@ -441,6 +455,17 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
         ))}
       </div>
 
+      {heatNotice && (
+        <div className="pointer-events-none fixed left-1/2 top-20 z-[75] -translate-x-1/2 px-3">
+          <div className="rounded-full border border-orange-300/20 bg-[#17100d]/95 px-4 py-2.5 text-center shadow-2xl backdrop-blur-xl">
+            <div className="text-sm font-black text-orange-100">
+              {heatNotice.direction === "up" ? "🔥 Heat turned up" : "❄️ Heat chilled down"} · Level {heatNotice.level}
+            </div>
+            <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[.12em] text-white/35">Applies from the next question</div>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-30 border-b border-white/[.07] bg-[#08070d]/80 backdrop-blur-xl">
         <div className="container flex min-h-16 items-center justify-between gap-3 py-3">
           <Logo />
@@ -524,7 +549,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
 
                   <div className="mt-7 flex flex-col gap-4 rounded-[24px] border border-white/10 bg-black/15 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div><div className="flex items-center gap-2 text-sm font-black"><Flame size={16} className="text-orange-300" /> Starting Heat</div><div className="mt-1 text-xs text-white/40">Raise it later without restarting.</div></div>
-                    <HeatControl value={room.heat} onChange={(heat) => void configure({ heat })} />
+                    <HeatControl value={room.heat} disabled={settingsBusy} onChange={(heat) => void configure({ heat })} />
                   </div>
 
                   <div className="mt-5 grid gap-2 sm:grid-cols-2">
@@ -679,9 +704,18 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
           <section className="glass ml-auto h-full w-full max-w-lg overflow-y-auto rounded-[28px] p-5 sm:p-6" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-3"><div><div className="kicker">Host controls</div><h2 className="mt-2 text-2xl font-black">Control the vibe.</h2></div><button type="button" className="btn btn-ghost !min-h-10 !w-10 !p-0" onClick={() => setHostPanel(false)}><X size={18} /></button></div>
 
-            <div className="mt-7 rounded-[24px] border border-white/10 bg-black/15 p-4">
-              <div className="mb-4"><div className="text-sm font-black">Live Heat</div><div className="mt-1 text-xs text-white/40">Changes apply to upcoming questions.</div></div>
-              <HeatControl value={room.heat} onChange={(heat) => void configure({ heat })} />
+            <div className="mt-7 rounded-[24px] border border-orange-300/15 bg-orange-300/[.045] p-4">
+              <div className="mb-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-black"><Flame size={16} className="text-orange-300" /> Live Heat</div>
+                  <span className="rounded-full border border-orange-300/15 bg-orange-300/[.07] px-2.5 py-1 text-[11px] font-black text-orange-100/70">LEVEL {room.heat}</span>
+                </div>
+                <div className="mt-1 text-xs leading-5 text-white/40">Change the intensity any time. The question already on screen stays untouched; the new level starts with the next question.</div>
+              </div>
+              <HeatControl value={room.heat} disabled={settingsBusy} onChange={(heat) => void configure({ heat })} />
+              <div className="mt-3 flex items-center justify-between text-[11px] font-bold text-white/30">
+                <span>− Chill down</span><span>Next question onward</span><span>Turn it up +</span>
+              </div>
             </div>
 
             <div className="mt-6">

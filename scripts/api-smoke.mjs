@@ -48,6 +48,17 @@ if (state.room.status !== "active" || !state.room.currentQuestion || state.room.
   throw new Error("game did not start correctly");
 }
 
+const questionBeforeHeatChange = state.room.currentQuestion.id;
+state = await request(gameUrl, {
+  op: "configure",
+  code: host.code,
+  token: host.token,
+  heat: 5,
+});
+if (state.room.status !== "active" || state.room.heat !== 5) throw new Error("mid-game heat increase failed");
+if (state.room.currentQuestion?.id !== questionBeforeHeatChange) throw new Error("mid-game heat changed the current question");
+if (state.room.roundNumber !== 1 || state.choices.length !== 0) throw new Error("mid-game heat change reset game progress");
+
 const sessions = new Map([
   [host.playerId, host],
   [a.playerId, a],
@@ -67,6 +78,18 @@ state = await request(gameUrl, {
 if (state.choices.length !== 1 || state.room.roundNumber !== 2) throw new Error("choice did not advance the round");
 if (state.choices[0].chosenPlayerId !== target.id) throw new Error("choice target mismatch");
 if (state.room.currentQuestion?.id === state.choices[0].questionId) throw new Error("question repeated immediately");
+if (state.room.heat !== 5) throw new Error("heat increase was not preserved into the next round");
+
+const questionBeforeCoolDown = state.room.currentQuestion?.id;
+state = await request(gameUrl, {
+  op: "configure",
+  code: host.code,
+  token: host.token,
+  heat: 2,
+});
+if (state.room.heat !== 2) throw new Error("mid-game heat decrease failed");
+if (state.room.currentQuestion?.id !== questionBeforeCoolDown) throw new Error("heat decrease changed the current question");
+if (state.room.roundNumber !== 2 || state.choices.length !== 1) throw new Error("heat decrease lost existing game data");
 
 await request(gameUrl, { op: "chat_send", code: host.code, token: a.token, body: "CI smoke message" });
 state = await request(gameUrl, { op: "state", code: host.code, token: b.token });
@@ -78,4 +101,4 @@ if (state.room.status !== "ended" || !state.final || state.final.questionCount !
 state = await request(restartUrl, { code: host.code, token: host.token });
 if (state.room.status !== "lobby" || state.choices.length !== 0 || state.final !== null) throw new Error("replay reset failed");
 
-console.log(`PASS: room ${host.code} completed create/join/start/choose/chat/end/replay smoke test`);
+console.log(`PASS: room ${host.code} completed create/join/start/live-heat/choose/chat/end/replay smoke test`);
