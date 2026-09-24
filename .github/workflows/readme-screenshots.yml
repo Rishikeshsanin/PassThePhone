@@ -1,0 +1,43 @@
+name: Capture README screenshots
+
+on:
+  push:
+    branches: [docs/repo-glowup]
+    paths:
+      - ".github/workflows/readme-screenshots.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: docs/repo-glowup
+
+      - name: Install Playwright Chromium
+        run: npx --yes playwright@1.49.1 install --with-deps chromium
+
+      - name: Capture production screenshots
+        run: |
+          mkdir -p docs/screenshots
+          npx --yes playwright@1.49.1 screenshot --browser=chromium --device="Desktop Chrome HiDPI" --full-page https://passthephone-puce.vercel.app docs/screenshots/home-desktop.png
+          npx --yes playwright@1.49.1 screenshot --browser=chromium --device="Desktop Chrome HiDPI" --full-page https://passthephone-puce.vercel.app/new docs/screenshots/create-room-desktop.png
+          npx --yes playwright@1.49.1 screenshot --browser=chromium --viewport-size="390,844" --full-page https://passthephone-puce.vercel.app docs/screenshots/home-mobile.png
+
+      - name: Commit screenshots
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots are already current."
+            exit 0
+          fi
+          git commit -m "docs: refresh product screenshots [skip ci]"
+          git push origin HEAD:docs/repo-glowup

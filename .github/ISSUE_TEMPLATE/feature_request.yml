@@ -1,0 +1,41 @@
+name: Feature request
+description: Suggest a focused improvement to PassThePhone
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the player or host pain point first.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed experience
+      description: Explain the simplest player-facing version of the idea.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Area
+      options:
+        - Questions / categories
+        - Heat
+        - Turn mechanics
+        - Host controls
+        - Chat / reactions
+        - Voice / video
+        - Results / receipts
+        - UI / accessibility
+        - Developer experience
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: Trade-offs / edge cases
+      description: Optional. Mention anything that could make the feature confusing, unsafe, or hard to use.
