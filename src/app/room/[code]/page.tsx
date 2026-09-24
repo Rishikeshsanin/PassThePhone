@@ -29,7 +29,7 @@ import { ChatDrawer } from "@/components/chat-drawer";
 import { configureRoom, getRoomState, heartbeat, roomAction } from "@/lib/api";
 import { clearSession, loadSession } from "@/lib/session";
 import { subscribeToRoom, type RoomReaction } from "@/lib/realtime";
-import type { Choice, GameCategory, Player, RoomState, SessionLength } from "@/types/game";
+import type { Choice, FinalResults, GameCategory, Player, RoomState, SessionLength } from "@/types/game";
 
 const CATEGORIES: GameCategory[] = ["classic", "funny", "wholesome", "personal", "dark", "adult", "fantasy", "popular"];
 const REACTIONS = ["😂", "❤️", "💀", "😭", "🔥", "👀", "🤡"];
@@ -57,6 +57,148 @@ function categoryLabel(category: string) {
     popular: "Popular",
   };
   return labels[category] ?? category;
+}
+
+
+function drawWrappedText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines = 3,
+) {
+  const words = text.split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+      if (lines.length >= maxLines - 1) break;
+    } else {
+      line = test;
+    }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  lines.forEach((value, index) => ctx.fillText(value, x, y + index * lineHeight));
+  return y + lines.length * lineHeight;
+}
+
+async function createReceiptCard(final: FinalResults, code: string) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1350;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas is unavailable.");
+
+  const bg = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  bg.addColorStop(0, "#090811");
+  bg.addColorStop(0.55, "#171026");
+  bg.addColorStop(1, "#090811");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const glow = ctx.createRadialGradient(810, 170, 0, 810, 170, 520);
+  glow.addColorStop(0, "rgba(217,70,239,.23)");
+  glow.addColorStop(1, "rgba(217,70,239,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#c4b5fd";
+  ctx.font = "800 26px system-ui, sans-serif";
+  ctx.fillText("PASSTHEPHONE · THE RECEIPTS", 72, 70);
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 72px system-ui, sans-serif";
+  ctx.fillText("The room has spoken.", 72, 125);
+
+  ctx.fillStyle = "rgba(255,255,255,.48)";
+  ctx.font = "500 25px system-ui, sans-serif";
+  ctx.fillText(`Room ${code} · ${final.questionCount} completed questions`, 72, 222);
+
+  let y = 305;
+  if (final.mostChosen) {
+    ctx.fillStyle = "rgba(139,92,246,.16)";
+    ctx.strokeStyle = "rgba(196,181,253,.34)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(72, y, 936, 230, 34);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = "#c4b5fd";
+    ctx.font = "800 22px system-ui, sans-serif";
+    ctx.fillText("👑 MAIN CHARACTER", 112, y + 40);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 58px system-ui, sans-serif";
+    ctx.fillText(final.mostChosen.playerName ?? "Player", 112, y + 82);
+
+    ctx.fillStyle = "rgba(255,255,255,.5)";
+    ctx.font = "600 24px system-ui, sans-serif";
+    ctx.fillText(`Picked ${final.mostChosen.count} time${final.mostChosen.count === 1 ? "" : "s"} tonight`, 112, y + 164);
+    y += 275;
+  }
+
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "900 32px system-ui, sans-serif";
+  ctx.fillText("Awards", 72, y);
+  y += 58;
+
+  const awards = final.awardWinners.slice(0, 4);
+  awards.forEach((award, index) => {
+    const col = index % 2;
+    const row = Math.floor(index / 2);
+    const x = 72 + col * 476;
+    const cardY = y + row * 150;
+    ctx.fillStyle = "rgba(255,255,255,.045)";
+    ctx.beginPath();
+    ctx.roundRect(x, cardY, 452, 126, 24);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,.43)";
+    ctx.font = "800 18px system-ui, sans-serif";
+    ctx.fillText(award.title.toUpperCase(), x + 28, cardY + 24);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 32px system-ui, sans-serif";
+    ctx.fillText(award.playerName, x + 28, cardY + 58);
+  });
+  y += awards.length > 2 ? 325 : awards.length ? 165 : 20;
+
+  const receipts = final.receipts.slice(0, 3);
+  if (receipts.length) {
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "900 32px system-ui, sans-serif";
+    ctx.fillText("Receipts", 72, y);
+    y += 58;
+
+    for (const receipt of receipts) {
+      ctx.fillStyle = "rgba(255,255,255,.05)";
+      ctx.beginPath();
+      ctx.roundRect(72, y, 936, 104, 22);
+      ctx.fill();
+
+      ctx.fillStyle = "rgba(255,255,255,.72)";
+      ctx.font = "600 22px system-ui, sans-serif";
+      drawWrappedText(ctx, receipt, 102, y + 24, 870, 30, 2);
+      y += 122;
+    }
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,.28)";
+  ctx.font = "700 19px system-ui, sans-serif";
+  ctx.fillText("Pick someone. Pass the turn.", 72, 1286);
+  ctx.textAlign = "right";
+  ctx.fillText("PassThePhone", 1008, 1286);
+
+  return await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("Could not create the receipt card.")), "image/png", 0.95);
+  });
 }
 
 export default function RoomPage({ params }: { params: Promise<{ code: string }> }) {
@@ -232,15 +374,35 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
       final.mostChosen ? `Main character: ${final.mostChosen.playerName} (${final.mostChosen.count} picks)` : "",
       ...final.awardWinners.slice(0, 4).map((award) => `${award.title}: ${award.playerName}`),
     ].filter(Boolean).join("\n");
+
     try {
-      if (navigator.share) await navigator.share({ title: "PassThePhone", text });
-      else {
+      const blob = await createReceiptCard(final, code);
+      const file = new File([blob], `passthephone-${code.toLowerCase()}-receipts.png`, { type: "image/png" });
+      const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
+      const data: ShareData = { title: "PassThePhone — Tonight's receipts", text, files: [file] };
+
+      if (navigator.share && nav.canShare?.(data)) {
+        await navigator.share(data);
+        return;
+      }
+
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = file.name;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+      try {
         await navigator.clipboard.writeText(text);
         setCopied(true);
         setTimeout(() => setCopied(false), 1300);
+      } catch {
+        // The visual card was still exported successfully.
       }
-    } catch {
-      // Cancelled share sheet is not an error worth surfacing.
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
+      setError(err instanceof Error ? err.message : "Could not share the receipt card.");
     }
   }
 
@@ -498,7 +660,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
             )}
 
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <button type="button" className="btn btn-secondary" onClick={() => void shareResults()}><Share2 size={17} /> {copied ? "Copied" : "Share results"}</button>
+              <button type="button" className="btn btn-secondary" onClick={() => void shareResults()}><Share2 size={17} /> {copied ? "Card saved" : "Share receipt"}</button>
               {me.isHost ? (
                 <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void run("restart")}><RotateCcw size={17} /> Play again</button>
               ) : (
