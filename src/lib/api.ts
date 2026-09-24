@@ -7,11 +7,14 @@ export type ApiResponse<T> =
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
-export async function gameApi<T>(payload: Record<string, unknown>): Promise<T> {
+export async function gameApi<T>(
+  payload: Record<string, unknown>,
+  functionName = "pass_the_phone-game-api",
+): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/pass_the_phone-game-api`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -61,12 +64,15 @@ export function heartbeat(code: string, token: string) {
   return gameApi<RoomState>({ op: "heartbeat", code, token });
 }
 
-export function roomAction<T = { state?: RoomState }>(
+export function roomAction<T = RoomState>(
   code: string,
   token: string,
   op: string,
   data: Record<string, unknown> = {},
 ) {
+  if (op === "restart") {
+    return gameApi<T>({ code, token }, "pass_the_phone-restart-api");
+  }
   return gameApi<T>({ op, code, token, ...data });
 }
 
@@ -81,5 +87,5 @@ export function configureRoom(
     chatEnabled: boolean;
   }>,
 ) {
-  return roomAction<{ state: RoomState }>(code, token, "configure", settings);
+  return roomAction<RoomState>(code, token, "configure", settings);
 }
