@@ -2,6 +2,8 @@
 
 **Pick someone. Pass the turn. Find out what your friends really think.**
 
+**Live:** https://passthephone-puce.vercel.app
+
 PassThePhone is a real-time multiplayer party game for **3–15 friends**. One person receives a question, publicly chooses the friend who fits best, and that selected friend normally receives the next turn. The chain keeps moving until the selected session length is complete or the host ends an Unlimited game.
 
 ## Why it is different
@@ -30,6 +32,9 @@ Every device sees the reveal, which creates the actual entertainment: arguments,
 - No account/signup flow
 - Room/session recovery after refresh
 - Mobile-first responsive UI with reduced-motion support
+- Installable PWA shell
+- Exportable/shareable visual receipt cards
+- Optional in-room voice/video calling for remote groups
 
 ## Stack
 
@@ -37,7 +42,7 @@ Every device sees the reveal, which creates the actual entertainment: arguments,
 - Tailwind CSS
 - Supabase Postgres + Realtime + Edge Functions
 - Vercel
-- LiveKit-ready roadmap for optional voice/video rooms
+- LiveKit voice/video room integration (optional remote-play layer)
 
 ## Architecture
 
@@ -113,6 +118,16 @@ NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
 ```
 
+Voice/video uses LiveKit and is isolated from game state. Add these **server-side** environment variables to enable calls:
+
+```env
+LIVEKIT_URL=wss://your-project.livekit.cloud
+LIVEKIT_API_KEY=...
+LIVEKIT_API_SECRET=...
+```
+
+The app validates the existing PassThePhone room session before minting a short-lived LiveKit participant token. The API secret is never sent to the browser.
+
 Privileged database credentials are never exposed to the browser. Deployed Edge Functions use Supabase-provided server runtime secrets.
 
 ## Verification
@@ -156,9 +171,9 @@ Test rooms expire automatically.
 - [x] Replay flow
 - [x] Build/typecheck CI
 - [x] Live backend smoke-test harness
-- [ ] Optional voice/video rooms
-- [ ] PWA install flow
-- [ ] Exportable visual receipt card
+- [x] Voice/video room integration (requires LiveKit deployment credentials)
+- [x] PWA install flow
+- [x] Exportable visual receipt card
 - [ ] Expand the curated catalogue further based on real play feedback
 
 ---
