@@ -26,6 +26,7 @@ import { CategoryChip } from "@/components/category-chip";
 import { HeatControl } from "@/components/heat-control";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { ChatDrawer } from "@/components/chat-drawer";
+import { LiveCall } from "@/components/live-call";
 import { configureRoom, getRoomState, heartbeat, roomAction } from "@/lib/api";
 import { clearSession, loadSession } from "@/lib/session";
 import { subscribeToRoom, type RoomReaction } from "@/lib/realtime";
@@ -448,6 +449,7 @@ export default function RoomPage({ params }: { params: Promise<{ code: string }>
               {copied ? <span className="flex items-center gap-1"><Check size={13} /> COPIED</span> : <span className="flex items-center gap-1.5"><Copy size={13} /> {code}</span>}
             </button>
             {room.chatEnabled && <ChatDrawer code={code} token={token} me={me} players={players} messages={state.messages} onSent={() => void refresh(true)} />}
+            <LiveCall code={code} token={token} />
             {me.isHost && room.status === "active" && (
               <button type="button" className="btn btn-secondary !min-h-11 !px-3" onClick={() => setHostPanel(true)}><Settings2 size={18} /><span className="hidden sm:inline">Host</span></button>
             )}
