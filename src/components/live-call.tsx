@@ -34,7 +34,7 @@ export function LiveCall({ code, token }: { code: string; token: string }) {
         cache: "no-store",
         body: JSON.stringify({ code, token }),
       });
-      const data = (await response.json().catch(() => ({}))) as Partial<LiveKitCredentials> & { error?: string; configured?: boolean };
+      const data = (await response.json().catch(() => ({}))) as { serverUrl?: string; participantToken?: string; roomName?: string; error?: string; configured?: boolean };
       if (!response.ok || !data.serverUrl || !data.participantToken) {
         throw new Error(
           data.configured === false
