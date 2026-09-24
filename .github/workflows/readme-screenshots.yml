@@ -28,7 +28,7 @@ jobs:
           mkdir -p docs/screenshots
           npx --yes playwright@1.49.1 screenshot --browser=chromium --device="Desktop Chrome HiDPI" --full-page https://passthephone-puce.vercel.app docs/screenshots/home-desktop.png
           npx --yes playwright@1.49.1 screenshot --browser=chromium --device="Desktop Chrome HiDPI" --full-page https://passthephone-puce.vercel.app/new docs/screenshots/create-room-desktop.png
-          npx --yes playwright@1.49.1 screenshot --browser=chromium --device="iPhone 15" --full-page https://passthephone-puce.vercel.app docs/screenshots/home-mobile.png
+          npx --yes playwright@1.49.1 screenshot --browser=chromium --viewport-size="390,844" --full-page https://passthephone-puce.vercel.app docs/screenshots/home-mobile.png
 
       - name: Commit screenshots
         run: |
