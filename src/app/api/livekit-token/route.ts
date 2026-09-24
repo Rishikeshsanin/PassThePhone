@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AccessToken } from "livekit-server-sdk";
+import { AccessToken, RoomServiceClient } from "livekit-server-sdk";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "@/lib/supabase-public";
 
 export const runtime = "nodejs";
@@ -17,6 +17,49 @@ function cleanCode(value: unknown) {
   return typeof value === "string"
     ? value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 5)
     : "";
+}
+
+function liveKitConfig() {
+  const serverUrl = process.env.LIVEKIT_URL?.trim();
+  const apiKey = process.env.LIVEKIT_API_KEY?.trim();
+  const apiSecret = process.env.LIVEKIT_API_SECRET?.trim();
+  return { serverUrl, apiKey, apiSecret };
+}
+
+export async function GET() {
+  const { serverUrl, apiKey, apiSecret } = liveKitConfig();
+
+  if (!serverUrl || !apiKey || !apiSecret) {
+    return NextResponse.json(
+      { configured: false, credentialsValid: false, urlValid: false },
+      { status: 503 },
+    );
+  }
+
+  const urlValid = /^wss:\/\/[a-z0-9.-]+\.livekit\.cloud$/i.test(serverUrl);
+  if (!urlValid) {
+    return NextResponse.json(
+      { configured: true, credentialsValid: false, urlValid: false },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const serviceUrl = serverUrl.replace(/^wss:/i, "https:");
+    const roomService = new RoomServiceClient(serviceUrl, apiKey, apiSecret);
+    await roomService.listRooms();
+    return NextResponse.json({
+      configured: true,
+      credentialsValid: true,
+      urlValid: true,
+    });
+  } catch (error) {
+    console.error("livekit-health", error);
+    return NextResponse.json(
+      { configured: true, credentialsValid: false, urlValid: true },
+      { status: 503 },
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -48,9 +91,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Your PassThePhone room session is not valid." }, { status: 401 });
     }
 
-    const serverUrl = process.env.LIVEKIT_URL?.trim();
-    const apiKey = process.env.LIVEKIT_API_KEY?.trim();
-    const apiSecret = process.env.LIVEKIT_API_SECRET?.trim();
+    const { serverUrl, apiKey, apiSecret } = liveKitConfig();
 
     if (!serverUrl || !apiKey || !apiSecret) {
       return NextResponse.json(
